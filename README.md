@@ -18,33 +18,37 @@ The program keeps separate `current` and `next` grids. It reads only from `curre
 
 - `src/heat_sequential.cpp` updates the grid on one CPU thread.
 - `src/heat_openmp.cpp` uses OpenMP to divide grid rows among CPU threads.
-- `src/heat_threads.cpp` uses `std::thread` and manually divides rows among worker threads. It creates and joins workers at each time step. It also writes the final grid to `heat_output.csv`.
-- `src/heat_optimized.cpp` uses OpenMP with one contiguous grid array to improve memory access.
+- `src/heat_threads.cpp` uses `std::thread` and manually divides rows among worker threads. The workers are created once and synchronized with a barrier after each time step. It also writes the final grid to `heat_output.csv`.
+- `src/heat_optimized.cpp` uses OpenMP with the grid stored as one flat, contiguous array instead of a vector of row vectors, which removes the per-row pointer lookup.
+- `src/common.hpp` reads the shared command-line settings.
 
-All versions use the same temperature update. The cache-aware version changes the memory layout, and the parallel versions change how rows are assigned to CPU threads.
+All versions use the same temperature update. The flat-array version changes the memory layout, and the parallel versions change how rows are assigned to CPU threads. Every program prints a grid checksum (the sum of all cells), so you can confirm that all versions produce the same final grid.
 
 ## Build and run on Windows
 
 Requirements: CMake, the MSYS2 MinGW GCC compiler, and Python with Matplotlib for generating the visualizations.
 
-Open PowerShell in this project folder and configure an optimized Release build:
+Open PowerShell in this project folder and configure the build. CMake defaults to an optimized Release build:
 
 ```powershell
 cmake -S . -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-Run each implementation:
+Each program takes optional arguments: `[grid_size] [time_steps] [threads]`. The defaults are a 1000 × 1000 grid and 100 steps. If no thread count is given, OpenMP uses `OMP_NUM_THREADS` and the C++ Threads version uses `std::thread::hardware_concurrency()`.
 
 ```powershell
-.\build\heat_sequential.exe
-$env:OMP_NUM_THREADS = "8"
-.\build\heat_openmp.exe
-.\build\heat_threads.exe
-.\build\heat_optimized.exe
+.\build\heat_sequential.exe 1000 100
+.\build\heat_openmp.exe 1000 100 8
+.\build\heat_threads.exe 1000 100 8
+.\build\heat_optimized.exe 1000 100 8
 ```
 
-`OMP_NUM_THREADS` sets the thread count for the OpenMP programs. The C++ Threads program chooses a count using `std::thread::hardware_concurrency()`.
+To benchmark every version on 500, 1000 and 1500 grids (three runs each) and save the averages and checksums to `release_benchmarks.csv`:
+
+```powershell
+.\run_benchmarks.ps1
+```
 
 ## Visualizations
 
@@ -54,22 +58,30 @@ Run `heat_threads.exe` to create `heat_output.csv`, then create the heatmap with
 python visualize.py
 ```
 
-The script saves `heatmap.png`. The preliminary multi-grid performance chart is generated with `python benchmark_plot.py`. The Release comparison chart is generated with `python release_benchmark_plot.py`.
+The script saves `heatmap.png`. After running `run_benchmarks.ps1`, generate charts from its results with `python benchmark_plot.py` (all grid sizes) and `python release_benchmark_plot.py` (1000 × 1000 comparison).
 
 ## Release benchmark results
 
-These measurements use a 1000 × 1000 grid, 100 time steps, and three runs per version. The parallel implementations used 8 threads. All versions produced a center temperature of 20.51 degrees.
+These measurements were collected on the project computer using a Release build, a 1000 × 1000 grid, 100 time steps, and three runs per version. Parallel versions used 8 threads. All versions produced a center temperature of 20.51 degrees and the same grid checksum, 20000080.
 
 | Version | Average runtime | Speedup over sequential |
 |---|---:|---:|
-| Sequential | 106.13 ms | 1.00× |
-| OpenMP | 70.23 ms | 1.51× |
-| C++ Threads | 145.78 ms | 0.73× |
-| Cache-aware OpenMP | 65.44 ms | 1.62× |
+| Sequential | 95.42 ms | 1.00× |
+| OpenMP | 78.16 ms | 1.22× |
+| Persistent C++ threads | 63.40 ms | 1.50× |
+| Flat-array OpenMP | 65.04 ms | 1.47× |
 
-The cache-aware OpenMP version was fastest in this Release comparison, about 7% faster than the original OpenMP version. The C++ Threads version was slower than the sequential version in this run; starting and joining workers at each time step adds overhead.
+The persistent C++ threads version was fastest in this Release comparison. Reusing workers across steps improved its result compared with the earlier implementation, which created and joined workers at every step. The flat-array OpenMP version was close behind. Runtime varies by computer and system load, so use the measurements in `release_benchmarks.csv` as the source for the included charts.
 
-The project also includes preliminary comparisons across 500 × 500, 1000 × 1000, and 1500 × 1500 grids. Those results came from the earlier default, non-Release build, so they are kept separate from the Release results above.
+The same benchmark run recorded the following averages for all tested sizes:
+
+| Grid size | Sequential | OpenMP (8) | Persistent C++ threads (8) | Flat-array OpenMP (8) |
+|---|---:|---:|---:|---:|
+| 500 × 500 | 20.14 ms | 20.61 ms | 23.31 ms | 22.66 ms |
+| 1000 × 1000 | 95.42 ms | 78.16 ms | 63.40 ms | 65.04 ms |
+| 1500 × 1500 | 246.94 ms | 128.92 ms | 101.64 ms | 83.16 ms |
+
+At 500 × 500, the sequential version was fastest, as thread overhead is significant for a smaller workload. At 1000 × 1000, persistent C++ threads were fastest. At 1500 × 1500, the flat-array OpenMP version was fastest. All sizes produced matching checksums across the four solvers: 5000080, 20000080, and 45000080, respectively.
 
 ## CUDA
 
@@ -78,4 +90,3 @@ CUDA was optional in the proposal. It is not included because this computer has 
 ## Presentation
 
 The project presentation is saved at deliverables/heat_diffusion_project_presentation.pptx.
-
