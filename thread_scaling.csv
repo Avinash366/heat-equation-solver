@@ -1,0 +1,37 @@
+grid_size,version,threads,average_ms,speedup
+500,OpenMP,1,13.62,0.95
+500,OpenMP,2,10.44,1.24
+500,OpenMP,4,9.5,1.36
+500,OpenMP,8,9.68,1.34
+500,C++ threads,1,12.91,1.0
+500,C++ threads,2,7.58,1.71
+500,C++ threads,4,6.54,1.98
+500,C++ threads,8,11.07,1.17
+500,Flat-array OpenMP,1,12.74,1.02
+500,Flat-array OpenMP,2,10.22,1.27
+500,Flat-array OpenMP,4,9.1,1.42
+500,Flat-array OpenMP,8,13.82,0.94
+1000,OpenMP,1,81.67,0.82
+1000,OpenMP,2,37.85,1.78
+1000,OpenMP,4,28.7,2.35
+1000,OpenMP,8,24.62,2.73
+1000,C++ threads,1,70.86,0.95
+1000,C++ threads,2,33.38,2.02
+1000,C++ threads,4,30.52,2.21
+1000,C++ threads,8,26.72,2.52
+1000,Flat-array OpenMP,1,66.9,1.01
+1000,Flat-array OpenMP,2,33.41,2.01
+1000,Flat-array OpenMP,4,23.16,2.91
+1000,Flat-array OpenMP,8,22.9,2.94
+1500,OpenMP,1,189.69,1.01
+1500,OpenMP,2,114.93,1.67
+1500,OpenMP,4,73.32,2.62
+1500,OpenMP,8,72.41,2.65
+1500,C++ threads,1,180.13,1.07
+1500,C++ threads,2,110.75,1.74
+1500,C++ threads,4,85.41,2.25
+1500,C++ threads,8,78.29,2.45
+1500,Flat-array OpenMP,1,191.47,1.0
+1500,Flat-array OpenMP,2,107.8,1.78
+1500,Flat-array OpenMP,4,75.31,2.55
+1500,Flat-array OpenMP,8,70.73,2.72

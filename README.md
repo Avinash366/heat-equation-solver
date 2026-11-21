@@ -83,6 +83,43 @@ The same benchmark run recorded the following averages for all tested sizes:
 
 At 500 × 500, the sequential version was fastest, as thread overhead is significant for a smaller workload. At 1000 × 1000, persistent C++ threads were fastest. At 1500 × 1500, the flat-array OpenMP version was fastest. All sizes produced matching checksums across the four solvers: 5000080, 20000080, and 45000080, respectively.
 
+## Thread scaling
+
+The proposal also called for benchmarks across thread counts. Each version was run with 1, 2, 4 and 8 threads on all three grid sizes, with 10 runs per configuration, the laptop plugged in and Windows set to **Best performance**. Speedup is relative to the sequential time measured in the same sweep.
+
+![Speedup vs. thread count](thread_scaling.png)
+
+| Grid | Version | 1 thread | 2 threads | 4 threads | 8 threads |
+|---|---|---:|---:|---:|---:|
+| 500 × 500 | OpenMP | 0.95× | 1.24× | 1.36× | 1.34× |
+| 500 × 500 | C++ threads | 1.00× | 1.71× | 1.98× | 1.17× |
+| 500 × 500 | Flat-array OpenMP | 1.02× | 1.27× | 1.42× | 0.94× |
+| 1000 × 1000 | OpenMP | 0.82× | 1.78× | 2.35× | 2.73× |
+| 1000 × 1000 | C++ threads | 0.95× | 2.02× | 2.21× | 2.52× |
+| 1000 × 1000 | Flat-array OpenMP | 1.01× | 2.01× | 2.91× | 2.94× |
+| 1500 × 1500 | OpenMP | 1.01× | 1.67× | 2.62× | 2.65× |
+| 1500 × 1500 | C++ threads | 1.07× | 1.74× | 2.25× | 2.45× |
+| 1500 × 1500 | Flat-array OpenMP | 1.00× | 1.78× | 2.55× | 2.72× |
+
+Observations:
+
+- With one thread, every version runs at about sequential speed, so the parallel code adds little overhead of its own.
+- Going from 1 to 2 threads gives close to the ideal 2× on the 1000 and 1500 grids.
+- Above 4 threads, speedup flattens at about 2.5–2.9×. The stencil does about 4 floating-point operations per 16 bytes moved, so all threads compete for the same memory bandwidth, and adding threads adds little once that bandwidth is used up.
+- On the 500 × 500 grid, 8 threads are slower than 4. Each step is only about 13 ms ÷ 100 = 0.13 ms of work, so the cost of synchronizing 8 threads every step outweighs the extra parallelism.
+
+These runs used a higher power setting and more repetitions than the 8-thread comparison above, so their absolute times are lower and the two sets of numbers should not be mixed. The raw results are in `benchmarks_1threads.csv`, `benchmarks_2threads.csv`, `benchmarks_4threads.csv` and `benchmarks_8threads.csv`. To reproduce them:
+
+```powershell
+foreach ($t in 1,2,4,8) {
+    powershell -ExecutionPolicy Bypass -File .\run_benchmarks.ps1 -Threads $t -Runs 10
+    Copy-Item release_benchmarks.csv "benchmarks_${t}threads.csv"
+}
+python thread_sweep_plot.py
+```
+
+(The loop overwrites `release_benchmarks.csv`; copy it first if you want to keep the earlier results.)
+
 ## CUDA
 
 CUDA was optional in the proposal. It is not included because this computer has an Intel Arc 130V GPU rather than a CUDA-capable NVIDIA GPU.
